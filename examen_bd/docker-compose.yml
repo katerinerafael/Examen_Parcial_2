@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  vector-db-class:
+    image: python:3.11-slim
+    container_name: vector_db_class
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/app
+    working_dir: /app
+
+    command: >
+      bash -c "
+      pip install --no-cache-dir numpy notebook ipykernel faiss-cpu sentence-transformers &&
+      python -m ipykernel install --user &&
+      jupyter notebook
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --ServerApp.token=1234
+      "
