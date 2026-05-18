@@ -1,0 +1,302 @@
+📘 Banco de Respuestas: Examen de Bases de Datos Vectoriales y FAISS
+📑 PARTE 1: Examen Tipo A (Katerine Lisbeth Rafael Bourdierd)
+Pregunta 1 (ID: 33) [1 punto]
+
+Enunciado: Modifique la función buscar() para mostrar únicamente resultados cuyo score sea mayor a 0.4.
+Respuesta (Código):
+Python
+
+def buscar(query, base, index, k=5):
+    q = embedding(query).reshape(1, -1)
+    distancias, indices = index.search(q, k)
+    resultados = []
+    
+    for j, i in enumerate(indices[0]):
+        distancia = float(distancias[0][j])
+        score = calcular_score(distancia)
+        
+        # Modificación exacta requerida:
+        if score > 0.4:
+            resultados.append({
+                "texto": base[i],
+                "distancia": distancia,
+                "score": score,
+                "indice": int(i)
+            })
+    return resultados
+
+Pregunta 2 (ID: 35) [1 punto]
+
+Enunciado: Compare resultados usando IndexFlatL2 e IndexFlatIP. Explique diferencias observadas.
+Respuesta Teórica:
+
+    IndexFlatL2: Utiliza la Distancia Euclidiana (L2​). Mide la longitud de la línea recta entre dos puntos en el espacio geométrico. Un valor de 0 significa máxima similitud matemática y crece hasta el infinito a medida que los conceptos se distancian.
+
+    IndexFlatIP: Utiliza el Producto Interno (Inner Product). Si los vectores se encuentran normalizados, equivale exactamente a la Similitud de Coseno. Evalúa el ángulo de dirección de los vectores, donde valores más altos significan mayor similitud.
+
+    Diferencia observada: El orden de prioridad (ranking) de los resultados varía. Mientras que L2​ se ve afectado por la magnitud espacial de los embeddings, IP prioriza la orientación conceptual interna, haciendo que textos largos o cortos alteren su relevancia según el índice utilizado.
+
+Pregunta 3 (ID: 9) [1 punto]
+
+Enunciado: Compare resultados entre las queries 'tecnología' y 'computadora portátil moderna'. Explique cuál produce resultados más específicos.
+Respuesta Teórica:
+
+La query 'computadora portátil moderna' produce resultados significativamente más específicos.
+
+Explicación: Al contener mayor cantidad de palabras clave con alta carga semántica, su embedding resultante se posiciona en una región del espacio hiperdimensional sumamente acotada y restrictiva. Por el contrario, 'tecnología' es un término abstracto y genérico; su vector se ubica en el centro de un dominio amplio, lo que provoca que la vecindad de resultados devuelva elementos muy diversos y dispersos entre sí (como servidores, bases de datos o aplicaciones).
+Pregunta 4 (ID: 50) [2 puntos]
+
+Enunciado: Construya un mini sistema semántico completo que incluya embeddings, índice FAISS, score, filtrado, logging y persistencia básica. Luego explique fortalezas, limitaciones y posibles usos empresariales.
+Respuesta (Código):
+Python
+
+import numpy as np
+import faiss
+import json
+from sentence_transformers import SentenceTransformer
+
+# 1. Inicialización de componentes y Persistencia básica de datos
+model = SentenceTransformer("all-MiniLM-L6-v2")
+base_datos = ["servidor empresarial seguro", "pizza italiana tradicional"]
+
+# 2. Generación de Embeddings e Indexación FAISS
+vectores = np.array([model.encode(t).astype("float32") for t in base_datos])
+indice_faiss = faiss.IndexFlatL2(vectores.shape[1])
+indice_faiss.add(vectores)
+
+# 3. Función del Sistema con Filtrado, Score y Logging incorporado
+def mini_buscador_semantico(query, umbral=0.4):
+    # Logging básico en consola
+    print(f"[LOG] Iniciando búsqueda semántica para: '{query}'") 
+    
+    q_vec = model.encode(query).astype("float32").reshape(1, -1)
+    distancias, indices = indice_faiss.search(q_vec, 1)
+    
+    distancia_l2 = float(distancias[0][0])
+    score_similitud = 1 / (1 + distancia_l2) # Mapeo de score
+    
+    # Filtrado por umbral de calidad
+    if score_similitud >= umbral:
+        resultado = {"texto": base_datos[indices[0][0]], "score": score_similitud}
+        print(f"[LOG] Resultado encontrado con éxito.")
+        return resultado
+        
+    print(f"[LOG] Ningún resultado superó el umbral de {umbral}.")
+    return None
+
+Análisis del Sistema:
+
+    Fortalezas: Ofrece búsquedas exactas e inmediatas en memoria para catálogos pequeños, siendo un sistema sumamente liviano y autocontenido.
+
+    Limitaciones: Carece de escalabilidad horizontal. Al emplear un índice de fuerza bruta (Flat), el consumo de memoria RAM se dispara linealmente con millones de registros y carece de persistencia nativa en disco para el índice.
+
+    Usos Empresariales: Ideal para la automatización de preguntas frecuentes (FAQ) en chatbots corporativos o enrutamiento automático de tickets de soporte técnico técnico hacia el área correcta.
+
+Pregunta 5 (ID: 41) [2 puntos]
+
+Enunciado: Implemente una función llamada buscar_multidominio() que permita recibir una query y retornar resultados agrupados por categoría ('animales', 'vehículos', 'tecnología'). El sistema debe filtrar resultados con score menor a 0.4.
+Respuesta (Código):
+Python
+
+def buscar_multidominio(query, sistema):
+    # Solicitamos los top 10 resultados para abarcar múltiples dominios
+    resultados_crudos = sistema.buscar(query, k=10)
+    
+    agrupados = {
+        "animales": [],
+        "vehículos": [],
+        "tecnología": []
+    }
+    
+    for item in resultados_crudos:
+        # Filtrado: omitir si no cumple con el score mínimo exigido
+        if item["score"] < 0.4:
+            continue
+            
+        posicion = item["indice"]
+        
+        # Mapeo y segmentación según los rangos del dataset 'base' original
+        if 0 <= posicion <= 4:
+            agrupados["animales"].append(item["texto"])
+        elif 5 <= posicion <= 9:
+            agrupados["vehículos"].append(item["texto"])
+        elif 15 <= posicion <= 19:
+            agrupados["tecnología"].append(item["texto"])
+            
+    return agrupados
+
+Pregunta 6 (ID: 26) [1 punto]
+
+Enunciado: Implemente una función que exporte los resultados de búsqueda a un diccionario JSON con texto, score y distancia.
+Respuesta (Código):
+Python
+
+import json
+
+def exportar_resultados_json(resultados_lista):
+    # Estructuramos la información asegurando la conversión a tipos nativos de Python
+    datos_serializables = [
+        {
+            "texto": item["texto"],
+            "score": float(item["score"]),
+            "distancia": float(item["distancia"])
+        }
+        for item in resultados_lista
+    ]
+    # Retornamos la cadena en formato JSON formateada para humanos
+    return json.dumps(datos_serializables, ensure_ascii=False, indent=2)
+
+Pregunta 7 (ID: 15) [1 punto]
+
+Enunciado: Complete una función que reciba una query y ejecute embedding(query).
+Respuesta (Código):
+Python
+
+def procesar_query(query):
+    # Invoca la función global de conversión provista por la arquitectura base
+    vector_generado = embedding(query)
+    return vector_generado
+
+Pregunta 8 (ID: 8) [1 punto]
+
+Enunciado: Complete la función calcular_score() usando la fórmula 1 / (1 + distancia).
+Respuesta (Código):
+Python
+
+def calcular_score(distancia):
+    """
+    Convierte algebraicamente la distancia Euclidiana en una métrica
+    de confianza acotada entre los valores 0 y 1.
+    """
+    return 1 / (1 + distancia)
+
+📑 PARTE 2: Examen Tipo B (Chao Peng Zhen Xie)
+Pregunta 1 (ID: 7) [1 punto]
+
+Enunciado: Inserte en el vocabulario textos relacionados con astronomía y luego ejecute búsquedas sobre animales. Explique cómo afecta esto al sistema.
+Respuesta Teórica:
+
+Afecta el rendimiento del ranking incrementando el ruido semántico general del espacio vectorial.
+
+Explicación: Al introducir elementos fuera de dominio (astronomía) y realizar búsquedas de "animales", el motor FAISS calculará matemáticamente las distancias contra todos los elementos existentes en la base de datos debido al comportamiento del índice Flat. Aunque los vectores astronómicos se ubicarán a una distancia muy lejana (score bajo), si la consulta requiere un número de vecinos (k) elevado, estos elementos irrelevantes irrumpirán en las últimas posiciones del ranking, degradando la pureza de los resultados si el sistema no posee un filtro por umbral restrictivo.
+Pregunta 2 (ID: 18) [1 punto]
+
+Enunciado: Modifique la función buscar_filtrado() para usar un umbral mínimo de 0.5.
+Respuesta (Código):
+Python
+
+def buscar_filtrado(query, base, index, umbral=0.5, k=5):
+    # La lógica interna permanece inalterada, solo varía el valor por defecto del umbral
+    resultados = buscar(query, base, index, k)
+    filtrados = [r for r in resultados if r["score"] >= umbral]
+    return filtrados
+
+Pregunta 3 (ID: 39) [1 punto]
+
+Enunciado: Modifique la función buscar() para devolver también la categoría del texto encontrado.
+Respuesta (Código):
+Python
+
+def buscar(query, base, index, k=5):
+    q = embedding(query).reshape(1, -1)
+    distancias, indices = index.search(q, k)
+    resultados = []
+    
+    for j, i in enumerate(indices[0]):
+        distancia = float(distancias[0][j])
+        score = calcular_score(distancia)
+        
+        # Lógica de asignación de categorías según los bloques del dataset proporcionado
+        if 0 <= i <= 4:
+            categoria = "ANIMALES"
+        elif 5 <= i <= 9:
+            categoria = "VEHÍCULOS"
+        elif 10 <= i <= 14:
+            categoria = "COMIDA"
+        elif 15 <= i <= 19:
+            categoria = "TECNOLOGÍA"
+        elif 20 <= i <= 23:
+            categoria = "AMBIGÜEDAD"
+        else:
+            categoria = "RUIDO"
+
+        resultados.append({
+            "texto": base[i],
+            "categoria": categoria, # Inserción de la metadata solicitada
+            "distancia": distancia,
+            "score": score,
+            "indice": int(i)
+        })
+    return resultados
+
+Pregunta 4 (ID: 46) [2 puntos]
+
+Enunciado: Construya un mini recomendador semántico que sugiera textos similares a partir del historial de búsquedas realizadas.
+Respuesta (Código):
+Python
+
+class RecomendadorSemantico:
+    def __init__(self, buscador_sistema):
+        # Almacena una referencia al buscador principal del sistema
+        self.sistema = buscador_sistema
+        self.historial_consultas = []
+
+    def registrar_consulta(self, query):
+        # Almacena el rastro de la consulta en la lista del historial
+        self.historial_consultas.append(query)
+
+    def obtener_sugerencias(self, k_sugerencias=3):
+        # Validación de seguridad en caso de historial vacío
+        if not self.historial_consultas:
+            return []
+            
+        # Extrae la última búsqueda registrada como pivote de interés actual
+        ultima_busqueda = self.historial_consultas[-1]
+        
+        # Buscamos los elementos semánticamente más cercanos.
+        # Se solicita k+1 previendo que el top 1 sea idéntico a la query original.
+        resultados = self.sistema.buscar(ultima_busqueda, k=k_sugerencias + 1)
+        return resultados
+
+Pregunta 5 (ID: 48) [2 puntos]
+
+Enunciado: Implemente una función que compare múltiples queries simultáneamente y devuelva los textos más relevantes para todas ellas.
+Respuesta (Código):
+Python
+
+def buscar_multi_query(queries, sistema, k=3):
+    # 1. Generamos los embeddings para cada una de las consultas provistas
+    vectores_queries = [embedding(q) for q in queries]
+    
+    # 2. Calculamos el "vector promedio" mediante la media aritmética (axis=0).
+    # Esto representa geométricamente el punto central de la intersección semántica de las queries.
+    vector_centroide = np.mean(vectores_queries, axis=0).reshape(1, -1)
+    
+    # 3. Realizamos la búsqueda vectorial utilizando el índice FAISS global del sistema
+    distancias, indices = sistema.index.search(vector_centroide, k)
+    
+    resultados = []
+    for j, i in enumerate(indices[0]):
+        resultados.append({
+            "texto": sistema.base[i],
+            "score": calcular_score(float(distancias[0][j])),
+            "indice": int(i)
+        })
+    return resultados
+
+Pregunta 6 (ID: 6) [1 punto]
+
+Enunciado: Ejecute búsquedas usando la query 'animal'. Explique por qué algunos resultados parecen menos precisos.
+Respuesta Teórica:
+
+Se debe a los fenómenos de abstracción léxica del embedding y a la polisemia contextual (palabras con múltiples significados).
+
+Al introducir únicamente el término aislado y genérico 'animal', el modelo carece de contexto suficiente para discriminar intenciones. Elementos pertenecientes a la categoría "AMBIGÜEDAD" (como el índice 22: "ratón inalámbrico computadora") alterarán el ranking y obtendrán scores de similitud moderadamente altos. Esto ocurre porque el token "ratón" comparte la misma raíz morfológica asociativa que el animal biológico dentro de las capas del modelo neuronal del SentenceTransformer, confundiendo hardware con fauna ante la falta de palabras aclaratorias (ej. "fauna silvestre").
+Pregunta 7 (ID: 40) [1 punto]
+
+Enunciado: Compare el comportamiento del sistema usando bases pequeñas especializadas frente a bases grandes mezcladas.
+Respuesta Teórica:
+
+    Bases Pequeñas Especializadas: Exhiben una alta precisión (Precision) en el dominio configurado. Las distancias calculadas entre los elementos vecinos son compactas, estables y el sistema está completamente a salvo de falsos positivos conceptuales, sacrificando variedad por exactitud.
+
+    Bases Grandes Mezcladas: Se incrementa de forma drástica el ruido semántico y las colisiones de vecindad. Al cohabitar dominios dispares (tecnología, comida, animales), se reduce la nitidez del motor de búsqueda en los límites de los clusters vectoriales. Las palabras homónimas o ambiguas tienden a mezclarse entre sí en las consultas del top-k, volviendo indispensable la implementación técnica de capas de filtrado híbrido por metadatos (pre-filtering o post-filtering).
