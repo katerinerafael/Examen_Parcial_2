@@ -1,0 +1,85 @@
+Comandos Cypher en Neo4j
+1. MATCH
+Busca patrones en el grafo (equivalente a SELECT en SQL).
+Ejemplo: Personas que viven en Madrid
+MATCH (p:Persona)-[:VIVE_EN]->(c:Ciudad {nombre: "Madrid"})
+RETURN p.nombre
+
+2. RETURN
+Define qué datos devolver.
+Ejemplo: nombres y edades
+MATCH (p:Persona)
+RETURN p.nombre, p.edad
+
+
+3. WHERE
+Filtra resultados del MATCH.
+Ejemplo: personas +30 años en TechCorp
+MATCH (p:Persona)-[:TRABAJA_EN]->(e:Empresa {nombre: "TechCorp"})
+WHERE p.edad > 30
+RETURN p.nombre, p.edad
+
+
+4. CREATE
+Crea nodos y relaciones.
+MATCH (c:Ciudad {nombre: "Madrid"})
+CREATE (p:Persona {id: 6, nombre: "Lucas", edad: 25})
+CREATE (p)-[:VIVE_EN]->(c)
+RETURN p
+
+
+5. MERGE
+Crea si no existe, evita duplicados.
+MERGE (t:Tecnologia {nombre: "Java"})
+ON CREATE SET t.id = 3
+RETURN t
+
+
+6. SET
+Actualiza propiedades.
+MATCH (p:Persona {nombre: "Ana"})
+SET p.edad = 31, p.rango = "Senior"
+RETURN p
+7. REMOVE
+Elimina propiedades o etiquetas.
+MATCH (p:Persona {nombre: "Ana"})-[r:PARTICIPA_EN]->(pr:Proyecto {nombre:
+"Apollo"})
+REMOVE r.horas
+RETURN p, r, pr
+8. DELETE
+Borra relaciones o nodos (si no están conectados).
+18/5/26, 11:49 Comandos Cypher - Neo4j
+file:///home/katerine.rafael@ctdesarrollo-sdr.org/Descargas/preview.html 2/4
+MATCH (p1:Persona {nombre: "Ana"})-[r:AMIGO_DE]->(p2:Persona {nombre: "Luis"})
+DELETE r
+9. DETACH DELETE
+Borra nodo + relaciones.
+MATCH (p:Persona {nombre: "Marta"})
+DETACH DELETE p
+10. ORDER BY
+Ordena resultados.
+MATCH (p:Persona)-[:TRABAJA_EN]->(e:Empresa {nombre: "TechCorp"})
+RETURN p.nombre, p.edad
+ORDER BY p.edad DESC
+11. LIMIT / SKIP
+Paginación de resultados.
+MATCH (p:Persona)
+RETURN p.nombre
+SKIP 1
+LIMIT 2
+12. WITH
+Encadena consultas intermedias.
+MATCH (p:Persona)-[:USA_TECNOLOGIA]->(t:Tecnologia {nombre: "Neo4j"})
+WITH p
+18/5/26, 11:49 Comandos Cypher - Neo4j
+file:///home/katerine.rafael@ctdesarrollo-sdr.org/Descargas/preview.html 3/4
+MATCH (p)-[:VIVE_EN]->(c:Ciudad {nombre: "Madrid"})
+RETURN p.nombre
+13. Agregaciones
+COUNT, SUM, AVG
+Contar amigos
+MATCH (p:Persona)-[:AMIGO_DE]->(amigo:Persona)
+RETURN p.nombre, count(amigo) AS TotalAmigos
+Sumar horas proyecto
+MATCH (p:Persona)-[r:PARTICIPA_EN]->(pr:Proyecto {nombre: "Apollo"})
+RETURN pr.nombre, sum(r.horas) AS TotalHorasProyecto
