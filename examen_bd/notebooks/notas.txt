@@ -170,7 +170,7 @@ def calcular_score(distancia):
     """
     return 1 / (1 + distancia)
 
-📑 PARTE 2: Examen Tipo B (Chao Peng Zhen Xie)
+📑 PARTE 2: Examen Tipo B 
 Pregunta 1 (ID: 7) [1 punto]
 
 Enunciado: Inserte en el vocabulario textos relacionados con astronomía y luego ejecute búsquedas sobre animales. Explique cómo afecta esto al sistema.
